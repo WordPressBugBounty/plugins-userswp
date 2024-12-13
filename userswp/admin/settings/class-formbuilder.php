@@ -139,8 +139,7 @@ class UsersWP_Form_Builder {
                                 <?php }
 
                                 $custom_fields = apply_filters( 'uwp_custom_fields_tabs', array( 'account', 'profile-tabs' ) );
-                                $fields = $this->form_fields_custom( $form_type );
-                                if ( in_array( $form_type, $custom_fields ) && $fields ) { ?>
+                                if ( in_array( $form_type, $custom_fields )  ) { ?>
                                     <h4 class="h6 text-muted"><?php esc_html_e( 'Custom Fields', 'userswp' ); ?></h4>
                                     <div id="uwp-form-builder-tab-custom" class="uwp-tabs-panel">
                                         <?php do_action( 'uwp_manage_available_fields_custom', $form_type ); ?>
@@ -369,7 +368,7 @@ class UsersWP_Form_Builder {
 
 
 			?>
-                <?php if ( ! empty( $register_forms ) && is_array( $register_forms ) ) { ?>
+                <?php if ( ! empty( $register_forms ) && is_array( $register_forms ) && count( $register_forms ) > 1 ) { ?>
                     <form class="uwp_user_type_form" id="uwp_user_type_form" method="POST">
                         <input type="hidden" name="manage_field_form_id" class="manage_field_form_id" id="manage_field_form_id" value="<?php echo esc_attr( $current_form ); ?>">
                         <?php do_action( 'uwp_user_type_form_before', $current_form, $tab ); ?>
@@ -419,7 +418,7 @@ class UsersWP_Form_Builder {
                 <input type="hidden" name="manage_field_form_id" class="manage_field_form_id" id="manage_field_form_id"
                         value="<?php echo esc_attr( $current_form ); ?>">
 					<?php
-					if ( ! empty( $register_forms ) && is_array( $register_forms ) ) {
+					if ( ! empty( $register_forms ) && is_array( $register_forms ) && count( $register_forms ) > 1  ) {
                     ?>
                         <div class="d-flex align-items-center">
                             <label  class="form-label h1"><i class="fas fa-user me-3 iconbox border-0 fill rounded-circle transition-all btn-translucent-info iconsmallmedium"></i>
@@ -455,7 +454,7 @@ class UsersWP_Form_Builder {
                 <input type="hidden" name="manage_field_form_id" class="manage_field_form_id" id="manage_field_form_id"
                         value="<?php echo esc_attr( $current_form ); ?>">
 					<?php
-					if ( ! empty( $register_forms ) && is_array( $register_forms ) ) {
+					if ( ! empty( $register_forms ) && is_array( $register_forms ) && count( $register_forms ) > 1  ) {
                     ?>
                     <div class="d-flex align-items-center">
                         <label  class="form-label h1"><i class="fas fa-user me-3 iconbox border-0 fill rounded-circle transition-all btn-translucent-info iconsmallmedium"></i>
