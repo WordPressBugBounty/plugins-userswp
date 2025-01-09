@@ -4,7 +4,7 @@ Donate link: https://www.ko-fi.com/stiofan
 Tags: login form, registration, registration form, user profile, user registration, members, membership
 Requires at least: 4.9
 Tested up to: 6.7
-Stable tag: 1.2.27
+Stable tag: 1.2.28
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -145,6 +145,14 @@ Yes, you can customize it with Elementor, but also with Gutenberg, Divi, Beaver 
 6. Edit Account Form.
 
 == Changelog ==
+
+= 1.2.28 - 2025-01-09 =
+* Added functionality to reorder user types - ADDED
+* Fixed default lightbox registration form with single form selection in "Lightbox Forms" setting - FIXED
+* Fixed issue with the display of the Form Builder Fieldset field - FIXED
+* [uwp_user_meta] add compatibility for GeoDirectory post - ADDED
+* Single quote in slect field label, required/validation message shows unwanted backslash - FIXED
+* Register form submit button is not spinning on AJAX submit - FIXED
 
 = 1.2.27 - 2024-12-26 =
 * Form Builder new field disappears after account tab is reloaded - FIXED

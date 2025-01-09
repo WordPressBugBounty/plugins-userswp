@@ -95,7 +95,7 @@ class UWP_User_Meta_Widget extends WP_Super_Duper {
         $keys[] = __('Select Key','userswp');
         if(!empty($fields)){
             foreach($fields as $field){
-	            $keys[ $field->htmlvar_name ] = $field->htmlvar_name . ' ( ' . __( $field->site_title, 'userswp' ) . ' )';
+	            $keys[ $field->htmlvar_name ] = $field->htmlvar_name . ' ( ' . __( stripslashes( $field->site_title ), 'userswp' ) . ' )';
             }
         }
 
@@ -113,8 +113,8 @@ class UWP_User_Meta_Widget extends WP_Super_Duper {
 	 * @return mixed|string|bool
 	 */
     public function output( $args = array(), $widget_args = array(), $content = '' ) {
-
         global $wpdb, $post;
+
         $table_name = uwp_get_table_prefix() . 'uwp_form_fields';
 
         $defaults = array(
@@ -127,18 +127,21 @@ class UWP_User_Meta_Widget extends WP_Super_Duper {
         $args = wp_parse_args( $args, $defaults );
 
         $args = apply_filters( 'uwp_widget_user_meta_args', $args, $widget_args, $this );
+        $user = array();
 
-        if(isset($args['user_id']) && !empty($args['user_id'])){
-	        if('post_author' == $args['user_id'] && $post instanceof WP_Post){
-		        $user = get_userdata($post->post_author);
-	        } else {
-		        $user = get_userdata((int)$args['user_id']);
-	        }
+        if ( ! empty( $args['user_id'] ) ) {
+            if ( 'post_author' == $args['user_id'] ) {
+                if ( ! empty( $post ) && is_object( $post ) && ! empty( $post->post_author ) ) {
+                    $user = get_userdata( (int) $post->post_author );
+                }
+            } else {
+                $user = get_userdata( (int) $args['user_id'] );
+            }
         } else {
-	        $user = uwp_get_displayed_user();
+            $user = uwp_get_displayed_user();
         }
 
-        if(empty($args['key']) || empty($user)){
+        if ( empty( $args['key'] ) || empty( $user ) ) {
             return '';
         }
 
@@ -188,7 +191,7 @@ class UWP_User_Meta_Widget extends WP_Super_Duper {
                 $output = $icon.$value;
                 break;
             case 'label-value':
-                $output = '<div class="uwp-user-meta-key">'. $field->site_title . '<span class="uwp-profile-extra-sep">:</span></div><div class="uwp-user-meta-value">'.$value.'</div>';
+                $output = '<div class="uwp-user-meta-key">'. __( stripslashes( $field->site_title ), 'userswp' ) . '<span class="uwp-profile-extra-sep">:</span></div><div class="uwp-user-meta-value">'.$value.'</div>';
                 break;
             case 'label':
                 return $field->site_title;
@@ -200,7 +203,7 @@ class UWP_User_Meta_Widget extends WP_Super_Duper {
                 $output = '<div class="uwp-user-meta-value">'.strip_tags($value).'</div>';
                 break;
             default:
-                $output = '<div class="uwp-user-meta-key">'. $icon . $field->site_title . '<span class="uwp-profile-extra-sep">:</span></div><div class="uwp-user-meta-value">'. $value. '</div>';
+                $output = '<div class="uwp-user-meta-key">'. $icon . __( stripslashes( $field->site_title ), 'userswp' ) . '<span class="uwp-profile-extra-sep">:</span></div><div class="uwp-user-meta-value">'. $value. '</div>';
         }
 
         //wrap output in a div
