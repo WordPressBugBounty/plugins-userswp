@@ -883,8 +883,7 @@ class UsersWP_GeoDirectory_Plugin {
 	 *
 	 * @return      void
 	 */
-    public function add_profile_gd_lists_tab_content($user)
-    {
+    public function add_profile_gd_lists_tab_content($user) {
 
         if (!class_exists('GeoDir_Lists')) {
             return;
@@ -1013,31 +1012,39 @@ class UsersWP_GeoDirectory_Plugin {
                 'row_gap_class' => '',
                 'card_border_class' => 'border-0',
                 'card_shadow_class' => '',
-                'layout' => '2',
+                'layout' => '3',
             );
 
-            $template_args = apply_filters('uwp_profile_tab_lists_args', $widget_args);
-            $gd_layout_class = geodir_convert_listing_view_class($widget_args['layout']);
+            $template_args = apply_filters( 'uwp_profile_tab_lists_args', $widget_args );
+            $gd_layout_class = geodir_convert_listing_view_class( $template_args['layout'] );
             ?>
             <div class="container mb-1">
                 <div class="row">
                     <div class="col-sm p-0 uwp-loop-posts-title">
                         <h3><?php echo esc_html($title); ?></h3>
                     </div>
+                    <div class="col p-0 d-sm-block uwp-loop-posts-toolbar">
+                        <div class="btn-toolbar justify-content-end" role="toolbar" aria-label="Toolbar with button groups">
+                            <?php geodir_list_view_select('gd_list'); ?>
+                        </div>
+                    </div>
                 </div>
             </div>
             <?php do_action('uwp_profile_posts_loop_wrap_start', $args, $found_posts); ?>
-            <div class="row row-cols-1 row-cols-sm-2 geodir-category-list-view <?php echo $gd_layout_class; ?>">
-                <?php
-                while ($the_query->have_posts()) : $the_query->the_post();
-                    echo geodir_get_template_html("bootstrap/content-listing.php", array(
-                        'column_gap_class' => $template_args['column_gap_class'],
-                        'row_gap_class' => $template_args['row_gap_class'],
-                        'card_border_class' => $template_args['card_border_class'],
-                        'card_shadow_class' => $template_args['card_shadow_class'],
-                    ));
-                endwhile;
-                ?>
+            <div class="geodir-loop-container">
+                <div class="row row-cols-1 row-cols-sm-2 geodir-category-list-view <?php echo esc_attr( $gd_layout_class ); ?>">
+                    <?php
+                    while ($the_query->have_posts()) : $the_query->the_post();
+                        echo geodir_get_template_html("bootstrap/content-listing.php", array(
+                            'column_gap_class' => $template_args['column_gap_class'],
+                            'row_gap_class' => $template_args['row_gap_class'],
+                            'card_border_class' => $template_args['card_border_class'],
+                            'card_shadow_class' => $template_args['card_shadow_class'],
+                        ));
+                    endwhile;
+                    wp_reset_postdata();
+                    ?>
+                </div>
             </div>
             <?php
             do_action('uwp_profile_pagination', $the_query->max_num_pages);
@@ -1326,7 +1333,7 @@ class UsersWP_GeoDirectory_Plugin {
                 'row_gap_class'  => '',
                 'card_border_class'  => 'border-0',
                 'card_shadow_class'  => '',
-                'layout'  => '2',
+                'layout'  => '3',
             );
 
             $template_args = apply_filters( 'uwp_profile_tab_listings_args', $widget_args );
@@ -1338,20 +1345,31 @@ class UsersWP_GeoDirectory_Plugin {
                     <div class="col-sm p-0 uwp-loop-posts-title">
                         <h3><?php echo esc_html( $title ); ?></h3>
                     </div>
+                    <div class="col p-0 d-sm-block uwp-loop-posts-toolbar">
+                        <div class="btn-toolbar justify-content-end" role="toolbar" aria-label="Toolbar with button groups">
+                        <?php
+                            geodir_list_view_select($post_type);
+                        ?>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="row row-cols-1 row-cols-sm-2 geodir-category-list-view <?php echo esc_attr( $gd_layout_class ); ?>">
-                <?php
-                    while ( $the_query->have_posts() ) :  $the_query->the_post();
-                        echo geodir_get_template_html( "bootstrap/content-listing.php", array(
-                            'column_gap_class'   => $template_args['column_gap_class'],
-                            'row_gap_class'   => $template_args['row_gap_class'],
-                            'card_border_class'   => $template_args['card_border_class'],
-                            'card_shadow_class'   => $template_args['card_shadow_class'],
-                        ) );
-                    endwhile;
-                ?>
-            </div>
+			<div class="geodir-loop-container">
+				<div class="row row-cols-1 row-cols-sm-2 geodir-category-list-view <?php echo esc_attr( $gd_layout_class ); ?>">
+					<?php
+						while ( $the_query->have_posts() ) :  $the_query->the_post();
+							echo geodir_get_template_html( "bootstrap/content-listing.php", array(
+								'column_gap_class'   => $template_args['column_gap_class'],
+								'row_gap_class'   => $template_args['row_gap_class'],
+								'card_border_class'   => $template_args['card_border_class'],
+								'card_shadow_class'   => $template_args['card_shadow_class'],
+								'template_part'   => $template_args['card_shadow_class'],
+							) );
+						endwhile;
+                        wp_reset_postdata();
+					?>
+				</div>
+			</div>
             <?php
 			do_action( 'uwp_profile_pagination', $the_query->max_num_pages );
 		}
@@ -1789,20 +1807,26 @@ class UsersWP_GeoDirectory_Plugin {
                     'row_gap_class' => '',
                     'card_border_class' => 'border-0',
                     'card_shadow_class' => '',
-                    'layout' => '2',
+                    'layout' => '3',
                 );
 
-                $template_args = apply_filters('uwp_profile_tab_favorites_args', $widget_args);
-                $gd_layout_class = geodir_convert_listing_view_class($widget_args['layout']);
+                $template_args = apply_filters('uwp_profile_tab_listings_args', $widget_args);
+                $gd_layout_class = geodir_convert_listing_view_class( $template_args['layout'] );
                 ?>
                 <div class="container mb-1">
                     <div class="row">
                         <div class="col-sm p-0 uwp-loop-posts-title">
                             <h3><?php echo esc_html($title); ?></h3>
                         </div>
+                        <div class="col p-0 d-sm-block uwp-loop-posts-toolbar">
+                            <div class="btn-toolbar justify-content-end" role="toolbar" aria-label="Toolbar with button groups">
+                                <?php geodir_list_view_select($post_type); ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="row row-cols-1 row-cols-sm-2 geodir-category-list-view <?php echo $gd_layout_class; ?>">
+				<div class="geodir-loop-container">
+                <div class="row row-cols-1 row-cols-sm-2 geodir-category-list-view <?php echo esc_attr( $gd_layout_class ); ?>">
                     <?php
                     while ($the_query->have_posts()) : $the_query->the_post();
                         echo geodir_get_template_html("bootstrap/content-listing.php", array(
@@ -1812,8 +1836,10 @@ class UsersWP_GeoDirectory_Plugin {
                             'card_shadow_class' => $template_args['card_shadow_class'],
                         ));
                     endwhile;
+                    wp_reset_postdata();
                     ?>
                 </div>
+				 </div>
                 <?php
                 do_action('uwp_profile_pagination', $the_query->max_num_pages);
             }
@@ -1948,10 +1974,15 @@ class UsersWP_GeoDirectory_Plugin {
 	 * @return      bool
 	 */
 	public function gd_is_listings_tab() {
-		global $wp_query, $uwp_profile_tabs_array;
+		global $wp_query, $uwp_profile_doing_tab, $uwp_profile_first_tab, $uwp_profile_tabs_array;
 
-		if ( is_page() && class_exists( 'UsersWP' ) && isset( $wp_query->query_vars['uwp_profile'] ) && ( $profile_page = uwp_get_page_id( 'profile_page', false ) ) ) {
+		//if ( is_uwp_profile_page() ) {
+		if ( is_page() && isset( $wp_query->query_vars['uwp_profile'] ) && uwp_get_page_id( 'profile_page', false ) ) {
 			$active_tab = ! empty( $wp_query->query_vars['uwp_tab'] ) ? $wp_query->query_vars['uwp_tab'] : '';
+
+			if ( empty( $active_tab ) && empty( $uwp_profile_first_tab ) && $uwp_profile_doing_tab ) {
+				$active_tab = $uwp_profile_doing_tab;
+			}
 
 			if ( empty( $active_tab ) && ! empty( $uwp_profile_tabs_array ) && ! empty( $uwp_profile_tabs_array[0]->tab_key ) ) {
 				$active_tab = $uwp_profile_tabs_array[0]->tab_key;
