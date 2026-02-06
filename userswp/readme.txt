@@ -2,9 +2,9 @@
 Contributors: stiofansisland, paoltaia, ayecode, ismiaini
 Donate link: https://www.ko-fi.com/stiofan
 Tags: login form, registration, registration form, user profile, user registration, members, membership
-Requires at least: 5.0
-Tested up to: 6.8
-Stable tag: 1.2.45
+Requires at least: 6.1
+Tested up to: 6.9
+Stable tag: 1.2.54
 License: GPLv3
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -90,6 +90,8 @@ UsersWP can be extended with several add-ons. Few examples are:
 * [User to User Private Messages](https://userswp.io/downloads/private-messages/) - Allow your users to send each other private messages in a Facebook-like chat.
 * [Membership](https://userswp.io/downloads/membership-plugin/) - Add Membership functionality to your WordPress website!
 * [Dashboard](https://userswp.io/downloads/dashboard/) - Manage everything from one simple, easy-to-use dashboard.
+* [MailerLite](https://userswp.io/downloads/mailerlite/) - Capture newsletter subscribers during registration to your mailerlite newsletter list.
+* [MailPoet](https://userswp.io/downloads/mailpoet/) - Capture newsletter subscribers during registration to your mailpoet newsletter list.
 
 There are many others and we release new Add-ons frequently. You can see the full collection here: [UsersWP Premium Add-ons](https://userswp.io/downloads/category/addons/)
 
@@ -149,6 +151,42 @@ Yes, you can customize it with Elementor, but also with Gutenberg, Divi, Beaver 
 6. Edit Account Form.
 
 == Changelog ==
+
+= 1.2.54 - 2026-01-22 =
+* Max entries per csv file option in Import/Export setting not showing options - FIXED
+* Check nonce while profile image and cover image crop - FIXED/SECURITY
+* Redirect profile page to login instead of home page if accessed without login - FIXED
+* Merge AUI 0.2.43, SD 1.2.31 & AyeCode Connect Helper 1.0.5 - CHANGED
+
+= 1.2.53 - 2026-01-08 =
+* Prevent duplicate event handlers in registration form switcher causing multiple AJAX requests - FIXED
+* Password strength doesn't enable/disable register button based on Minimum password strength setting - FIXED
+
+= 1.2.52 - 2025-12-18 =
+* Fixed issue with the profile url page not working if child page - FIXED
+
+= 1.2.51 - 2025-12-11 =
+* Field option Is Public does not save with No option - FIXED
+
+= 1.2.50 - 2025-12-03 =
+* WordPress v6.9 compatibility check - CHANGED
+
+= 1.2.49 - 2025-11-26 =
+* Check nonce while changing the order in register form builder - FIXED/SECURITY
+
+= 1.2.48 - 2025-11-12 =
+* Check nonce while changing the user type for bulk users - FIXED/SECURITY
+
+= 1.2.47 - 2025-10-31 =
+* Merge SD 1.2.29 - CHANGED
+
+= 1.2.46 - 2025-10-30 =
+* Users list page search and sorting functionality - FIXED
+* Dynamic tax field labels for GetPaid integration - ADDED
+* Window reload on user ajax registration prevent users to read the success message - FIXED
+* Unable to customize login/account page templates with Breakdance builder - FIXED
+* Show placeholder for uwp_login shortcode on editor - CHANGED
+* User type selector now displays on both lightbox and normal registration forms - ADDED
 
 = 1.2.45 - 2025-09-05 =
 * Extra sanitization and escaping during remove file field value - FIXED/SECURITY

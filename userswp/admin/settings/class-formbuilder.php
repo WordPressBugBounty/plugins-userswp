@@ -1107,6 +1107,7 @@ class UsersWP_Form_Builder {
 		?>
         <input type="hidden" name="form_type" id="form_type" value="<?php echo esc_attr( $form_type ); ?>"/>
         <input type="hidden" name="manage_field_type" class="manage_field_type" value="custom_fields">
+        <input type="hidden" name="uwp_create_field_nonce" class="uwp_create_field_nonce" value="<?php echo wp_create_nonce( 'uwp_create_field_nonce' ); ?>"/>
         <ul class="core uwp-tabs-selected uwp_form_extras ps-0 list-group">
 			<?php
 			// Retrieve fields saved with form id 0.
@@ -1215,12 +1216,12 @@ class UsersWP_Form_Builder {
                     <?php if ( $field_type == 'fieldset' ) { ?>
                         <i class="fas fa-long-arrow-alt-left " aria-hidden="true"></i>
                         <i class="fas fa-long-arrow-alt-right " aria-hidden="true"></i>
-                        <b><?php echo esc_html( uwp_ucwords( __( 'Fieldset:', 'userswp' ) ) ); ?></b>
-                        <span class="field-type float-end text-end small"><?php echo ' (' . esc_html( uwp_ucwords( $field_site_title ) ) . ')'; ?></span>
+                        <b><?php echo esc_html( __( 'Fieldset:', 'userswp' ) ); ?></b>
+                        <span class="field-type float-end text-end small"><?php echo ' (' . esc_html( $field_site_title ) . ')'; ?></span>
                     <?php } else { ?>
                         <?php echo $field_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                        <b><?php echo esc_html( uwp_ucwords( ' ' . $field_site_title ) ); ?></b>
-                        <span class="field-type float-end text-end small"><?php echo ' (' . esc_html( uwp_ucwords( $field_type_name ) ) . ')'; ?></span>
+                        <b><?php echo esc_html( ' ' . $field_site_title ); ?></b>
+                        <span class="field-type float-end text-end small"><?php echo ' (' . esc_html( ucfirst( $field_type_name ) ) . ')'; ?></span>
                     <?php } ?>
                 </div>
                 <div class="dd-handle ui-sortable-handle">
@@ -1472,18 +1473,17 @@ $extra_attributes['readonly'] = 'readonly'; $class = 'bg-opacity-50 bg-gray';  }
 
                     // is_public
                     if ( has_filter( "uwp_builder_is_public_{$field_type}" ) ) {
-
                         echo apply_filters( "uwp_builder_is_public_{$field_type}", '', $result_str, $cf, $field_info ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-
                     } else {
                         $value = '';
+
                         if ( isset( $field_info->is_public ) ) {
-                            $value = esc_attr( $field_info->is_public );
-                        } elseif ( isset( $cf['defaults']['is_public'] ) && $cf['defaults']['is_public'] ) {
-                            $value = $cf['defaults']['is_public'];
+                            $value = (int) $field_info->is_public;
+                        } elseif ( isset( $cf['defaults']['is_public'] ) && ( $cf['defaults']['is_public'] || $cf['defaults']['is_public'] === '0' || $cf['defaults']['is_public'] === 0 ) ) {
+                            $value = (int) $cf['defaults']['is_public'];
                         }
 
-                        echo aui()->select(
+                        aui()->select(
                             array(
                                 'id'         => 'is_public',
                                 'name'       => 'is_public',
@@ -1493,14 +1493,14 @@ $extra_attributes['readonly'] = 'readonly'; $class = 'bg-opacity-50 bg-gray';  }
                                 'options'    => array(
                                     '1' => __( 'Yes', 'userswp' ),
                                     '0' => __( 'No', 'userswp' ),
-                                    '2' => __( 'Let User Decide', 'userswp' ),
+                                    '2' => __( 'Let User Decide', 'userswp' )
                                 ),
                                 'label'      => __( 'Is Public', 'userswp' ) . uwp_help_tip( __( 'If no is selected then the field will not be visible to other users.', 'userswp' ) ),
                                 'value'      => $value,
-                                'wrap_class' => uwp_advanced_toggle_class(),
-                            )
+                                'wrap_class' => uwp_advanced_toggle_class()
+                            ),
+                            true
                         );
-
                     }
 
                     // default_value
@@ -1852,6 +1852,7 @@ $extra_attributes['readonly'] = 'readonly'; $class = 'bg-opacity-50 bg-gray';  }
 		$form_id           = self::get_form_id()
 		?>
         <input type="hidden" name="manage_field_type" class="manage_field_type" value="register">
+        <input type="hidden" name="uwp_create_field_nonce" class="uwp_create_field_nonce" value="<?php echo wp_create_nonce( 'uwp_create_field_nonce' ); ?>"/>
         <ul class="core uwp_form_extras uwp-tabs-selected  ps-0 list-group ">
         <?php
 
@@ -1912,7 +1913,6 @@ $extra_attributes['readonly'] = 'readonly'; $class = 'bg-opacity-50 bg-gray';  }
 			}
 			$field_info = stripslashes_deep( $field_info ); // strip slashes
 		}
-		$field_site_name = sanitize_title( $field_site_name );
 
 		if ( isset( $request['form_type'] ) ) {
 			$form_type = esc_attr( $request['form_type'] );
@@ -1957,7 +1957,8 @@ $extra_attributes['readonly'] = 'readonly'; $class = 'bg-opacity-50 bg-gray';  }
 					?>
                     <div class="  flex-fill font-weight-bold fw-bold">
                         <?php echo $field_icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                        <b><?php echo esc_html( uwp_ucwords( ' ' . $field_site_name ) ); ?></b>
+                        <b><?php echo ' ' . esc_html( $field_site_name ); ?></b>
+                        <span class="field-type float-end text-end small"><?php echo ' (' . esc_html( ucfirst( $field_type ) ) . ')'; ?></span>
                     </div>
                     <div class="dd-handle ui-sortable-handle">
                         <?php if ( isset( $htmlvar_name ) && ! in_array( $htmlvar_name, $no_actions ) ) { ?>
@@ -2522,7 +2523,10 @@ $extra_attributes['readonly'] = 'readonly'; $class = 'bg-opacity-50 bg-gray';  }
 
 		/* ------- check nonce field ------- */
 		if ( isset( $_REQUEST['update'] ) && $_REQUEST['update'] == 'update' && isset( $_REQUEST['create_field'] ) && isset( $_REQUEST['manage_field_type'] ) && $_REQUEST['manage_field_type'] == 'custom_fields' ) {
-			echo $this->set_field_order( $field_ids, $form_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'uwp_create_field_nonce' ) ) {
+                return;
+            }
+            echo $this->set_field_order( $field_ids, $form_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		}
 
 		/* ---- Show field form in admin ---- */
@@ -2552,7 +2556,7 @@ $extra_attributes['readonly'] = 'readonly'; $class = 'bg-opacity-50 bg-gray';  }
 					$tags = '';
 				}
 
-				if ( $tags != 'skip_field' ) {
+				if ( $tags != 'skip_field' && !empty( $_REQUEST[ $pkey ] ) ) {
 					$_REQUEST[ $pkey ] = strip_tags( $_REQUEST[ $pkey ], $tags );
 				}
 			}
@@ -3211,8 +3215,12 @@ $extra_attributes['readonly'] = 'readonly'; $class = 'bg-opacity-50 bg-gray';  }
 			$field_id     = isset( $_REQUEST['field_id'] ) ? trim( sanitize_text_field( $_REQUEST['field_id'] ), '_' ) : '';
 			$field_action = isset( $_REQUEST['field_ins_upd'] ) ? sanitize_text_field( $_REQUEST['field_ins_upd'] ) : '';
 
-			/* ------- check nonce field ------- */
-			if ( isset( $_REQUEST['update'] ) && $_REQUEST['update'] == 'update' ) {
+			/* ------- update order of fields ------- */
+			if ( isset( $_REQUEST['update'] ) && $_REQUEST['update'] == 'update' && isset( $_REQUEST['_wpnonce'] )) {
+                if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'uwp_create_field_nonce' ) ) {
+                    return;
+                }
+
 				$field_ids = array();
 				if ( ! empty( $_REQUEST['licontainer'] ) && is_array( $_REQUEST['licontainer'] ) ) {
 					foreach ( $_REQUEST['licontainer'] as $lic_id ) {

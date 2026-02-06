@@ -254,8 +254,8 @@ function uwp_init_auth_modal(){
 
     // open login form
     if(uwp_localize_data.login_modal) {
-        jQuery('.users-wp-login-nav a, .uwp-login-link').off('click');
-        jQuery(".users-wp-login-nav a, .uwp-login-link").on('click', function (e) {
+        jQuery('.users-wp-login-nav a, .uwp-login-link, [data-uwp-link="login"]').off('click');
+        jQuery('.users-wp-login-nav a, .uwp-login-link, [data-uwp-link="login"]').on('click', function (e) {
             uwp_cancelBubble(e);
             uwp_modal_login_form();
             return false;
@@ -264,8 +264,8 @@ function uwp_init_auth_modal(){
 
     // open the register form
     if(uwp_localize_data.register_modal) {
-        jQuery('.users-wp-register-nav a, .uwp-register-link').off('click');
-        jQuery(".users-wp-register-nav a, .uwp-register-link").on('click', function (e) {
+        jQuery('.users-wp-register-nav a, .uwp-register-link, [data-uwp-link="register"]').off('click');
+        jQuery('.users-wp-register-nav a, .uwp-register-link, [data-uwp-link="register"]').on('click', function (e) {
             uwp_cancelBubble(e);
             uwp_modal_register_form();
             return false;
@@ -274,8 +274,8 @@ function uwp_init_auth_modal(){
 
     // open the forgot password form
     if(uwp_localize_data.forgot_modal) {
-        jQuery('.users-wp-forgot-nav a, .uwp-forgot-password-link').off('click');
-        jQuery(".users-wp-forgot-nav a, .uwp-forgot-password-link").on('click', function (e) {
+        jQuery('.users-wp-forgot-nav a, .uwp-forgot-password-link, [data-uwp-link="forgot-password"]').off('click');
+        jQuery('.users-wp-forgot-nav a, .uwp-forgot-password-link, [data-uwp-link="forgot-password"]').on('click', function (e) {
             uwp_cancelBubble(e);
             uwp_modal_forgot_password_form();
             return false;
@@ -447,7 +447,7 @@ function uwp_modal_login_form_process(){
                 }
 
             }else if(data.success===false){
-                jQuery('.uwp-auth-modal .modal-content .modal-error').html(data.data.message);
+                jQuery('.uwp-auth-modal .modal-content .modal-error').html(data.data);
                 jQuery('.uwp-auth-modal .modal-content .uwp_login_submit').html($button_text).prop('disabled', false);// enable submit
                 uwp_maybe_reset_recaptcha();
             }
@@ -524,62 +524,91 @@ function uwp_modal_register_form(form_id){
     });
 }
 
+/**
+ * Load register form via AJAX for normal (non-modal) forms.
+ */
+function uwp_load_register_form(form_id, form, activeElement) {
+    var data = {
+        'action': 'uwp_ajax_register_form',
+        'form_id': form_id,
+    };
+
+    jQuery.ajax({
+        type: "POST",
+        url: uwp_localize_data.ajaxurl,
+        data: data,
+        beforeSend: function() {
+            jQuery(document).trigger('uwp_form_loading', { form_id, form });
+
+            if (activeElement) {
+                activeElement.addClass('active');
+            }
+            var $inputDivs = form.find('input, select, textarea').not('#uwp-form-type-select');
+            var $placeholder = '<div class="badge badge-pill badge-light p-3 mt-3 w-100 bg-loading">&nbsp;</div>';
+
+            // Replace each input's parent div with the placeholder
+            $inputDivs.each(function() {
+                jQuery(this).replaceWith($placeholder);
+            });
+
+            // Remove everything else in the form except the placeholders
+            form.children().not('.badge, #uwp-form-select').remove();
+        },
+        success: function(data) {
+            if(data.success){
+                var $returnedForm = jQuery(data.data).find('form');
+                var $formSelector = form.find('#uwp-form-select');
+
+                form.html($returnedForm.html());
+
+                if (!$returnedForm.find('#uwp-form-select').length && !$returnedForm.find('#uwp-form-select-ajax').length && $formSelector) {
+                    form.prepend($formSelector);
+                }
+
+                form.find('#uwp-form-select-ajax').attr('id', 'uwp-form-select');
+
+                jQuery(document).trigger('uwp_form_loaded', { form_id, form, html: data.data });
+            }
+
+            uwp_init_auth_modal();
+            aui_init_select2();
+            uwp_switch_reg_form_init();
+        }
+    });
+}
+
 function uwp_switch_reg_form_init() {
-    jQuery( '#uwp-form-select-ajax a' ).on( 'click', function( e ) {
+    // Handle button clicks for lightbox (AJAX modal)
+    jQuery( '#uwp-form-select-ajax a' ).off( 'click.uwpSwitchRegForm' ).on( 'click.uwpSwitchRegForm', function( e ) {
         e.preventDefault(e);
         var form_id = jQuery(this).attr('data-form_id');
         uwp_modal_register_form(form_id);
     });
 
-    jQuery( '#uwp-form-select a' ).on( 'click', function( e ) {
+    // Handle select dropdown for lightbox (AJAX modal)
+    jQuery( '#uwp-form-select-ajax select#uwp-form-type-select' ).off( 'change.uwpSwitchRegForm' ).on( 'change.uwpSwitchRegForm', function( e ) {
+        var form_id = jQuery(this).find('option:selected').attr('data-form_id');
+        uwp_modal_register_form(form_id);
+    });
+
+    // Handle button clicks for normal forms
+    jQuery( '#uwp-form-select a' ).off( 'click.uwpSwitchRegForm' ).on( 'click.uwpSwitchRegForm', function( e ) {
         e.preventDefault(e);
         var self = jQuery(this);
         var form_id = self.attr('data-form_id');
         var form = self.parents('form');
         jQuery('#uwp-form-select a').removeClass('active');
+        
+        uwp_load_register_form(form_id, form, self);
+    });
 
-        var data = {
-            'action': 'uwp_ajax_register_form', // deliberately no nonce for caching reasons
-            'form_id': form_id,
-        };
-
-        jQuery.ajax({
-            type: "POST",
-            url: uwp_localize_data.ajaxurl,
-            data: data,
-            beforeSend: function() {
-                self.addClass('active');
-                var $inputDivs = form.find('input, select, textarea');
-                var $placeholder = '<div class="badge badge-pill badge-light p-3 mt-3 w-100 bg-loading">&nbsp;</div>';
-
-                // Replace each input's parent div with the placeholder
-                $inputDivs.each(function() {
-                    jQuery(this).replaceWith($placeholder);
-                });
-
-                // Remove everything else in the form except the placeholders
-                form.children().not('.badge, #uwp-form-select').remove();
-            },
-            success: function(data) {
-                if(data.success){
-                    var $returnedForm = jQuery(data.data).find('form');
-
-                    var $formSelector = form.find('#uwp-form-select');
-
-                    form.html($returnedForm.html());
-
-                    if (!$returnedForm.find('#uwp-form-select').length && !$returnedForm.find('#uwp-form-select-ajax').length && $formSelector) {
-                        form.prepend($formSelector);
-                    }
-
-                    form.find('#uwp-form-select-ajax').attr('id', 'uwp-form-select');
-                }
-
-                uwp_init_auth_modal();
-                aui_init_select2();
-                uwp_switch_reg_form_init();
-            }
-        });
+    // Handle select dropdown for normal forms
+    jQuery( '#uwp-form-select select#uwp-form-type-select' ).off( 'change.uwpSwitchRegForm' ).on( 'change.uwpSwitchRegForm', function( e ) {
+        var self = jQuery(this);
+        var form_id = self.find('option:selected').attr('data-form_id');
+        var form = self.parents('form');
+        
+        uwp_load_register_form(form_id, form);
     });
 }
 
@@ -606,18 +635,14 @@ function uwp_modal_register_form_process(){
                 if(data.data.message){
                     jQuery('.uwp-auth-modal .modal-content .modal-error').html(data.data.message);
                     jQuery(".modal-content form.uwp-registration-form").trigger('reset');
-                    // Show success message for 1 second before redirecting.
                     setTimeout(function(){
                         if(data.data.redirect){
                             window.location = data.data.redirect;
-                        }else{
-                            location.reload();
                         }
-                    }, 1000);
+                    }, 3000);
                 }else{
                     jQuery('.uwp-auth-modal .modal-content .modal-error').html(data.data.message);
                 }
-
 
             }else if(data.success===false){
                 jQuery('.uwp-auth-modal .modal-content .modal-error').html(data.data.message);

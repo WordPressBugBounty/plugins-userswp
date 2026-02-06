@@ -206,9 +206,10 @@
          */
         updateFieldOrder: function ($sortable) {
             const manageFieldType = $sortable.closest('#uwp-selected-fields').find(".manage_field_type").val();
+            const nonce = $sortable.closest('#uwp-selected-fields').find(".uwp_create_field_nonce").val();
             const order = $sortable.sortable("serialize") + '&update=update&manage_field_type=' + manageFieldType;
             const formId = $('[name="manage_field_form_id"]').val();
-            const formIdParam = '&form_id=' + formId;
+            const formIdParam = '&form_id=' + formId + '&_wpnonce=' + nonce;
             const actionType = UWP.Form_Builder.getActionType(manageFieldType);
             const action = actionType.action;
 
@@ -292,7 +293,8 @@
                 'url': `${uwp_admin_ajax.url}?action=${action}&manage_field_type=${manageFieldType}${formIdParam}`,
                 'data': requestData,
                 'beforeSend': function () {
-                    $('.uwp-form-settings-form #save').html('<span class="spinner-border spinner-border-sm" role="status"></span> ' + uwp_admin_ajax.txt_saving).addClass('disabled');
+                    var $loader = $('.uwp-form-settings-form #save').length ? $('.uwp-form-settings-form #save') : $('.uwp-form-settings-form').parent().find('#save');
+                    $loader.html('<span class="spinner-border spinner-border-sm" role="status"></span> ' + uwp_admin_ajax.txt_saving).addClass('disabled');
                 },
                 'success': function (result) {
                     if ($.trim(result) === 'invalid_key') {

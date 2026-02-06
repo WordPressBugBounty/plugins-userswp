@@ -468,8 +468,8 @@ class UsersWP_Forms {
 				} elseif ( ! empty( $notice ) ) {
 						echo wp_kses_post( $notice );
 				}
-}
-}
+            }
+        }
 
 		if ( $type == 'change' ) {
 			$user_id      = get_current_user_id();
@@ -4876,11 +4876,11 @@ class UsersWP_Forms {
 							var $form = $(this).closest('form');
 							if( ! $form.hasClass('uwp-login-form') ) {
 								uwp_checkPasswordStrength(
-									$('input[name=password]', $form),         // First password field
-									$('input[name=confirm_password]', $form), // Second password field
-									$('#uwp-password-strength', $form),           // Strength meter
-									$('input[type=submit]', $form),           // Submit button
-									['black', 'listed', 'word']        // Blacklisted words
+                                    $form.find('input[name=password]'),
+                                    $form.find('input[name=confirm_password]'),
+                                    $form.find('#uwp-password-strength'),
+                                    $form.find('button[type="submit"], input[type="submit"]'),
+                                    ['black', 'listed', 'word']
 								);
 							}
 						}
