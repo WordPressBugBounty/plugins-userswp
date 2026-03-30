@@ -103,25 +103,24 @@ class UsersWP_Forms {
 		}
 
 		if ( $processed ) {
-
 			if ( is_wp_error( $errors ) ) {
-				echo aui()->alert(
-                    array( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-					'type'    => 'error',
-					'class'   => 'text-center',
-					'content' => wp_kses_post( $errors->get_error_message() ),
-                    )
-                );
-			} elseif ( $redirect ) {
+				aui()->alert(
+					array(
+						'type'    => 'error',
+						'content' => wp_kses_post( $errors->get_error_message() )
+					),
+					true
+				);
+			} else if ( $redirect ) {
 					wp_safe_redirect( $redirect );
 					exit();
-				} else {
-				echo aui()->alert(
-				array( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-				'type'    => 'success',
-				'class'   => 'text-center',
-				'content' => wp_kses_post( $message ),
-                    )
+			} else {
+				aui()->alert(
+					array(
+						'type'    => 'success',
+						'content' => wp_kses_post( $message )
+					),
+					true
 				);
 			}
 		}
@@ -197,12 +196,34 @@ class UsersWP_Forms {
 	 */
 	public function process_image_crop( $data = array(), $type = 'avatar', $unlink_prev_img = false ) {
 		global $wpdb;
+
 		if ( ! is_user_logged_in() ) {
 			return false;
 		}
 
 		if ( empty( $_POST['uwp_crop_nonce'] ) || ! wp_verify_nonce( $_POST['uwp_crop_nonce'], 'uwp_crop_nonce_' . $type ) ) {
 			return;
+		}
+
+		$image_url = ! empty( $data['uwp_crop'] ) ? esc_url( $data['uwp_crop'] ) : '';
+
+		if ( empty( $image_url ) ) {
+			return new WP_Error( 'empty_image', __( 'Upload valid image.', 'userswp' ) );
+		}
+
+		// Ensure we have a valid URL with an allowed meme type.
+		$image_url = $this->normalize_url( $image_url );
+
+		$content_url = str_replace( array( 'https://', 'http://' ) , '', untrailingslashit( WP_CONTENT_URL ) );
+		$_image_url = str_replace( array( 'https://', 'http://' ), '', $image_url );
+		if ( strpos( $_image_url, $content_url ) !== 0 ) {
+			return new WP_Error( 'invalid_image', __( 'Invalid image url.', 'userswp' ) );
+		}
+
+		$filetype = wp_check_filetype( $image_url );
+
+		if ( empty( $filetype['ext'] ) ) {
+			return new WP_Error( 'invalid_image', __( 'Invalid image type.', 'userswp' ) );
 		}
 
 		// If is current user's profile (profile.php)
@@ -214,19 +235,6 @@ class UsersWP_Forms {
 			// Otherwise something is wrong.
 		} else {
 			$user_id = get_current_user_id();
-		}
-
-		// Ensure we have a valid URL with an allowed meme type.
-		$image_url = $this->normalize_url( esc_url( $data['uwp_crop'] ) );
-		$filetype  = wp_check_filetype( $image_url );
-
-		$errors = new WP_Error();
-		if ( empty( $image_url ) || empty( $filetype['ext'] ) ) {
-			$errors->add( 'something_wrong', __( 'Something went wrong. Please contact site admin.', 'userswp' ) );
-		}
-
-		if ( $errors->has_errors() ) {
-			return $errors;
 		}
 
 		// Retrieve current thumbnail.
@@ -253,11 +261,12 @@ class UsersWP_Forms {
 			$name                 = sanitize_file_name( pathinfo( $image_path, PATHINFO_FILENAME ) ); //file name without extension
 			$thumb_image_name     = $name . $thumb_postfix . '.' . $ext;
 			$thumb_image_location = str_replace( $name . '.' . $ext, $thumb_image_name, $image_path );
+
 			//Get the new coordinates to crop the image.
-			$x = $data['x'];
-			$y = $data['y'];
-			$w = $data['w'];
-			$h = $data['h'];
+			$x = $data['uwpx'];
+			$y = $data['uwpy'];
+			$w = $data['uwpw'];
+			$h = $data['uwph'];
 			//Scale the image based on cropped width setting
 			$scale = $full_width / $w;
 			//$scale = 1; // no scaling
@@ -2249,44 +2258,79 @@ class UsersWP_Forms {
 	 * @since   1.0.0
 	 */
 	public function upload_file_remove() {
+		global $wpdb;
+
 		check_ajax_referer( 'uwp_basic_nonce', 'security' );
 
-		$htmlvar = esc_sql( strip_tags( $_POST['htmlvar'] ) );
+		// Check user logged in.
+		if ( ! is_user_logged_in() ) {
+			$message = aui()->alert( array( 'type' => 'error', 'content' => __( 'Access denied!', 'userswp' ) ) );
+			wp_send_json_error( array( 'message' => $message ) );
+		}
+
 		$user_id = ! empty( $_POST['uid'] ) ? absint( $_POST['uid'] ) : 0;
+		$htmlvar = ! empty( $_POST['htmlvar'] ) ? sanitize_key( $_POST['htmlvar'] ) : '';
 
-		if ( empty( $user_id ) ) {
-			wp_die( -1 );
+		if ( empty( $user_id ) || empty( $htmlvar ) ) {
+			$message = aui()->alert( array( 'type' => 'error', 'content' => __( 'Invalid data!', 'userswp' ) ) );
+			wp_send_json_error( array( 'message' => $message ) );
 		}
 
-		if ( ! ( is_user_logged_in() && ( $user_id == (int) get_current_user_id() || current_user_can( 'manage_options' ) ) ) ) {
-			wp_send_json_error( __( 'Invalid access!', 'userswp' ) );
+		// Validate the user / admin.
+		if ( ! ( $user_id == (int) get_current_user_id() || current_user_can( 'manage_options' ) ) ) {
+			$message = aui()->alert( array( 'type' => 'error', 'content' => __( 'Invalid access!', 'userswp' ) ) );
+			wp_send_json_error( array( 'message' => $message ) );
 		}
 
-		// Remove file
 		if ( $htmlvar == 'banner_thumb' ) {
-			$file = uwp_get_usermeta( $user_id, 'banner_thumb' );
+			$field_key = 'banner';
 			$type = 'banner';
-		} elseif ( $htmlvar == 'avatar_thumb' ) {
-			$file = uwp_get_usermeta( $user_id, 'avatar_thumb' );
+		} else if ( $htmlvar == 'avatar_thumb' ) {
+			$field_key = 'avatar';
 			$type = 'avatar';
 		} else {
-			$file = '';
+			$field_key = $htmlvar;
 			$type = '';
 		}
 
+		$field = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM " . uwp_get_table_prefix() . "uwp_form_fields WHERE htmlvar_name = %s LIMIT 1", $field_key ) );
+
+		// Check field exists.
+		if ( empty( $field ) ) {
+			$message = aui()->alert( array( 'type' => 'error', 'content' => __( 'Invalid field!', 'userswp' ) ) );
+			wp_send_json_error( array( 'message' => $message ) );
+		}
+
+		// Validate field access.
+		if ( ! empty( $field->for_admin_use ) && ! current_user_can( 'manage_options' ) ) {
+			$message = aui()->alert( array( 'type' => 'error', 'content' => __( 'You are not allowed to perform this action!', 'userswp' ) ) );
+			wp_send_json_error( array( 'message' => $message ) );
+		}
+
+		if ( ! in_array( $field->field_type, array( 'file', 'image' ) ) ) {
+			$message = aui()->alert( array( 'type' => 'error', 'content' => __( 'Invalid field type!', 'userswp' ) ) );
+			wp_send_json_error( array( 'message' => $message ) );
+		}
+
+		$value = uwp_get_usermeta( $user_id, $htmlvar );
+
 		uwp_update_usermeta( $user_id, $htmlvar, '' );
 
-		if ( $file ) {
+		if ( $value ) {
 			$uploads     = wp_upload_dir();
 			$upload_path = $uploads['basedir'];
-			$unlink_file = untrailingslashit( $upload_path ) . '/' . ltrim( $file, '/' );
+			$unlink_file = untrailingslashit( $upload_path ) . '/' . ltrim( $value, '/' );
 
 			if ( is_file( $unlink_file ) && file_exists( $unlink_file ) ) {
 				@unlink( $unlink_file );
-				$unlink_ori_file = str_replace( '_uwp_' . $type . '_thumb' . '.', '.', $unlink_file );
 
-				if ( is_file( $unlink_ori_file ) && file_exists( $unlink_ori_file ) ) {
-					@unlink( $unlink_ori_file );
+				// For avatar/banner, also remove the original (non-thumb) file.
+				if ( $type ) {
+					$unlink_ori_file = str_replace( '_uwp_' . $type . '_thumb' . '.', '.', $unlink_file );
+
+					if ( is_file( $unlink_ori_file ) && file_exists( $unlink_ori_file ) ) {
+						@unlink( $unlink_ori_file );
+					}
 				}
 			}
 		}
@@ -4322,7 +4366,7 @@ class UsersWP_Forms {
 		if ( empty( $html ) ) {
 
 			$design_style    = uwp_get_option( 'design_style', 'bootstrap' );
-			$bs_form_group   = $design_style ? 'form-group m-0' : ''; // country wrapper div added by JS adds marginso we remove ours
+			$bs_form_group   = $design_style ? 'form-group m-0' : ''; // country wrapper div added by JS adds margin so we remove ours
 			$bs_sr_only      = $design_style ? 'sr-only' : '';
 			$bs_form_control = $design_style ? 'form-control' : '';
 
