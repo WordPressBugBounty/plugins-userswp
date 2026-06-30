@@ -175,19 +175,64 @@ jQuery(window).on('load',function () {
         function uwp_ajax_login($this) {
 
             $('#uwp_login_modal .uwp-login-ajax-notice').remove();
+            $('#uwp_login_modal form.uwp-login-form').prev('.alert').remove();
 
             var data = jQuery($this).serialize()+ "&action=uwp_ajax_login";
 
             jQuery.post(uwp_localize_data.ajaxurl, data, function(response) {
-                response = jQuery.parseJSON(response);
+                if (typeof response === 'string') {
+                    response = jQuery.parseJSON(response);
+                }
 
-                if(response.error){
-                    $('#uwp_login_modal form.uwp-login-form').before(response.message);
+                if(response.success === false || response.error){
+                    $('#uwp_login_modal form.uwp-login-form').before(response.data && response.data.message ? response.data.message : response.message);
+                } else if (response.success === true && response.data && response.data.is_2fa) {
+                    $('#uwp_login_modal form.uwp-login-form').replaceWith(response.data.html);
+                    $('#uwp_login_modal form.validate_2fa_form').on('submit', function(e) {
+                        e.preventDefault();
+                        uwp_ajax_login_2fa('form.validate_2fa_form', '');
+                    });
+                    $('#uwp_login_modal form.validate_2fa_backup_codes_form').on('submit', function(e) {
+                        e.preventDefault();
+                        uwp_ajax_login_2fa('form.validate_2fa_backup_codes_form', '');
+                    });
+                    $('#uwp_login_modal .uwp-2fa-email-resend').on('click', function(e) {
+                        e.preventDefault();
+                        uwp_ajax_login_2fa('form.validate_2fa_form', '&wp-2fa-email-code-resend=1', this);
+                    });
                 } else {
-                    $('#uwp_login_modal form.uwp-login-form').before(response.message);
+                    $('#uwp_login_modal form.uwp-login-form').before(response.data && response.data.message ? response.data.message : response.message);
                     setTimeout(function(){location.reload()}, 1200)
                 }
 
+            });
+        }
+
+        function uwp_ajax_login_2fa(type, fields, btnEl) {
+            $('#uwp_login_modal .uwp-login-ajax-notice').remove();
+            $('#uwp_login_modal ' + type).prev('.alert').remove();
+
+            var data = jQuery('#uwp_login_modal ' + type).serialize() + '&action=uwp_ajax_login_process_2fa' + fields;
+
+            jQuery.post(uwp_localize_data.ajaxurl, data, function(response) {
+                if (typeof response === 'string') {
+                    response = jQuery.parseJSON(response);
+                }
+
+                if (response.success === false || response.error) {
+                    $('#uwp_login_modal ' + type).before(response.data && response.data.message ? response.data.message : response.message);
+                    $('#uwp_login_modal ' + type).find('.uwp-2fa-submit').prop('disabled', false);
+                    if (btnEl) {
+                        $(btnEl).prop('disabled', false);
+                    }
+                } else {
+                    $('#uwp_login_modal ' + type).before(response.data && response.data.message ? response.data.message : response.message);
+                    if (response.data && response.data.redirect) {
+                        setTimeout(function(){location.href = response.data.redirect}, 1200);
+                    } else {
+                        setTimeout(function(){location.reload()}, 1200);
+                    }
+                }
             });
         }
 
@@ -441,7 +486,7 @@ function uwp_modal_login_form_process(){
 
                     jQuery( '.uwp-auth-modal .modal-content .uwp-2fa-email-resend' ).on( 'click', function( e ) {
                         e.preventDefault(e);
-                        uwp_modal_login_form_2fa_process('form.validate_2fa_form', '&wp-2fa-email-code-resend=1');
+                        uwp_modal_login_form_2fa_process('form.validate_2fa_form', '&wp-2fa-email-code-resend=1', jQuery(this));
                     });
                 } else {
                     if(data.data.redirect){
@@ -465,9 +510,11 @@ function uwp_modal_login_form_process(){
     });
 }
 
-function uwp_modal_login_form_2fa_process(type, fields){
+function uwp_modal_login_form_2fa_process(type, fields, $button){
     var data = jQuery(".modal-content " + type).serialize() + '&action=uwp_ajax_login_process_2fa'+fields;
-    $button = jQuery('.uwp-auth-modal .modal-content '+type).find('.uwp-2fa-submit');
+    if (!$button) {
+        $button = jQuery('.uwp-auth-modal .modal-content '+type).find('.uwp-2fa-submit');
+    }
     $button_text = $button.html();
     jQuery.ajax({
         type: "POST",
