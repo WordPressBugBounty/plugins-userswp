@@ -220,6 +220,14 @@ class UsersWP_Forms {
 			return new WP_Error( 'invalid_image', __( 'Invalid image url.', 'userswp' ) );
 		}
 
+		// Only allow cropping the image the current user just uploaded (normalized like $image_url).
+		$pending_key = '_uwp_pending_' . $type . '_upload';
+		$pending_url = get_user_meta( get_current_user_id(), $pending_key, true );
+		$pending_url = $pending_url ? str_replace( array( 'https://', 'http://' ), '', $this->normalize_url( esc_url( $pending_url ) ) ) : '';
+		if ( empty( $pending_url ) || $pending_url !== $_image_url ) {
+			return new WP_Error( 'crop_session_expired', __( 'Your image upload could not be verified. Please upload the image again.', 'userswp' ) );
+		}
+
 		$filetype = wp_check_filetype( $image_url );
 
 		if ( empty( $filetype['ext'] ) ) {
@@ -282,6 +290,13 @@ class UsersWP_Forms {
 			}
 
 			$cropped = uwp_resizeThumbnailImage( $thumb_image_location, $image_path, $x, $y, $w, $h, $scale );
+
+			// Resize returns a path even on failure; bail before touching meta or files so the crop can be retried.
+			clearstatcache( true, $thumb_image_location );
+			if ( ! is_file( $thumb_image_location ) ) {
+				return new WP_Error( 'crop_failed', __( 'Could not crop the image. Please try again.', 'userswp' ) );
+			}
+
 			$cropped = str_replace( $upload_path, $upload_url, $cropped );
 
 			// Remove previous avatar/banner
@@ -298,11 +313,32 @@ class UsersWP_Forms {
 				uwp_update_usermeta( $user_id, 'banner_thumb', $cropped );
 			}
 
-			if ( $unlink_img && $unlink_img != $thumb_image_location && is_file( $unlink_img ) && file_exists( $unlink_img ) ) {
-				@unlink( $unlink_img );
-				$unlink_ori_img = str_replace( '_uwp_' . $type . '_thumb' . '.', '.', $unlink_img );
-				if ( is_file( $unlink_ori_img ) && file_exists( $unlink_ori_img ) ) {
-					@unlink( $unlink_ori_img );
+			$original_key  = '_uwp_' . $type . '_original';
+			$prev_original = get_user_meta( $user_id, $original_key, true );
+
+			delete_user_meta( get_current_user_id(), $pending_key );
+			$relative_original = ltrim( wp_normalize_path( str_replace( wp_normalize_path( untrailingslashit( $upload_path ) ), '', wp_normalize_path( $image_path ) ) ), '/' );
+			update_user_meta( $user_id, $original_key, $relative_original );
+
+			// Enforce containment inside uploads before deleting, matching upload_file_remove().
+			$real_upload_path = realpath( $upload_path );
+			$real_unlink_img  = $unlink_img ? realpath( $unlink_img ) : false;
+
+			if ( $real_upload_path && $real_unlink_img && realpath( $thumb_image_location ) !== $real_unlink_img
+				&& false !== strpos( basename( $real_unlink_img ), $thumb_postfix . '.' )
+				&& 0 === strpos( $real_unlink_img, $real_upload_path . DIRECTORY_SEPARATOR )
+				&& is_file( $real_unlink_img ) ) {
+				wp_delete_file( $real_unlink_img );
+
+				// Delete the previous source only if it is the exact file this user cropped.
+				$unlink_ori_img      = str_replace( $thumb_postfix . '.', '.', $real_unlink_img );
+				$real_unlink_ori_img = realpath( $unlink_ori_img );
+				$expected_original   = $prev_original ? realpath( untrailingslashit( $upload_path ) . '/' . $prev_original ) : false;
+				if ( $expected_original && $real_unlink_ori_img && $expected_original === $real_unlink_ori_img
+					&& realpath( $image_path ) !== $real_unlink_ori_img
+					&& 0 === strpos( $real_unlink_ori_img, $real_upload_path . DIRECTORY_SEPARATOR )
+					&& is_file( $real_unlink_ori_img ) ) {
+					wp_delete_file( $real_unlink_ori_img );
 				}
 			}
 		}
@@ -389,6 +425,11 @@ class UsersWP_Forms {
 			uwp_update_usermeta( $user_id, 'banner_thumb', '' );
 		} else {
 			// Do nothing
+		}
+
+		if ( in_array( $type, array( 'avatar', 'banner' ), true ) ) {
+			delete_user_meta( $user_id, '_uwp_' . $type . '_original' );
+			delete_user_meta( get_current_user_id(), '_uwp_pending_' . $type . '_upload' );
 		}
 
 		if ( is_admin() ) {
@@ -2638,17 +2679,27 @@ class UsersWP_Forms {
 				&& strpos( $real_unlink_file, $real_upload_path . DIRECTORY_SEPARATOR ) === 0 ) {
 				wp_delete_file( $real_unlink_file );
 
-				// For avatar/banner, also remove the original (non-thumb) file.
+				// For avatar/banner, also remove the original (non-thumb) file, only if it is the exact file this user cropped.
 				if ( $type ) {
-					$unlink_ori_file = str_replace( '_uwp_' . $type . '_thumb' . '.', '.', $real_unlink_file );
+					$unlink_ori_file      = str_replace( '_uwp_' . $type . '_thumb' . '.', '.', $real_unlink_file );
 					$real_unlink_ori_file = realpath( $unlink_ori_file );
+					$prev_original        = get_user_meta( $user_id, '_uwp_' . $type . '_original', true );
+					$expected_original    = $prev_original ? realpath( untrailingslashit( $upload_path ) . '/' . $prev_original ) : false;
 
-					if ( $real_unlink_ori_file && is_file( $real_unlink_ori_file )
+					if ( $expected_original && $real_unlink_ori_file && $expected_original === $real_unlink_ori_file
+						&& $real_unlink_ori_file !== $real_unlink_file
+						&& is_file( $real_unlink_ori_file )
 						&& strpos( $real_unlink_ori_file, $real_upload_path . DIRECTORY_SEPARATOR ) === 0 ) {
 						wp_delete_file( $real_unlink_ori_file );
 					}
 				}
 			}
+		}
+
+		// Clear crop bookkeeping meta (pending upload is stored against the uploader).
+		if ( $type ) {
+			delete_user_meta( $user_id, '_uwp_' . $type . '_original' );
+			delete_user_meta( get_current_user_id(), '_uwp_pending_' . $type . '_upload' );
 		}
 
 		wp_send_json_success();
