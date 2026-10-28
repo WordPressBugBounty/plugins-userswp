@@ -980,7 +980,7 @@ class UsersWP_Forms {
 					);
 					$response = array(
 						'message'  => $message,
-						'redirect' => $redirect_to,
+						'redirect' => $redirect_to ? wp_validate_redirect( $redirect_to, home_url( '/' ) ) : '', // the JS follows it, so the same host check as wp_safe_redirect(); empty means reload
 					);
 					wp_send_json_success( $response );
 				} else {
@@ -1122,7 +1122,7 @@ class UsersWP_Forms {
 		}
 
 		if ( isset( $_REQUEST['redirect_to'] ) && ! empty( $_REQUEST['redirect_to'] ) ) {
-			$redirect_to = esc_url_raw( $_REQUEST['redirect_to'] );
+			$redirect_to = esc_url_raw( wp_unslash( $_REQUEST['redirect_to'] ) );
 		} elseif ( isset( $data['redirect_to'] ) && ! empty( $data['redirect_to'] ) ) {
 			$redirect_to = esc_url_raw( $data['redirect_to'] );
 		} elseif ( isset( $redirect_page_id ) && (int) $redirect_page_id > 0 ) {
@@ -1134,7 +1134,7 @@ class UsersWP_Forms {
 			}
 			$redirect_to = get_permalink( $redirect_page_id );
 		} elseif ( isset( $redirect_page_id ) && (int) $redirect_page_id == - 1 && wp_get_referer() ) {
-			$redirect_to = esc_url( wp_get_referer() );
+			$redirect_to = esc_url_raw( wp_get_referer() );
 		} elseif ( isset( $redirect_page_id ) && (int) $redirect_page_id == - 2 && $custom_url ) {
 			$redirect_to = $custom_url;
 		} else {
@@ -1296,6 +1296,7 @@ class UsersWP_Forms {
 				$redirect_to = '';
 			    if ( 1 == uwp_get_option( 'login_modal_enable_redirect' ) ) {
 				    $redirect_to = $this->get_login_redirect_url( $data, $user );
+				    $redirect_to = $redirect_to ? wp_validate_redirect( $redirect_to, home_url( '/' ) ) : ''; // the JS follows it, so the same host check as wp_safe_redirect(); empty means reload
                 }
 				wp_send_json_success(
                     array(
@@ -1386,7 +1387,10 @@ class UsersWP_Forms {
 				} elseif ( 'email' === $provider ) {
 					$has_token = \WP2FA\Authenticator\Authentication::user_has_token( $user->ID );
 					if ( empty( $has_token ) || ! $has_token ) {
+						// WP 2FA stops AJAX requests without its setup wizard nonce with a 400 error, so send the code as a normal request.
+						add_filter( 'wp_doing_ajax', '__return_false', PHP_INT_MAX );
 						\WP2FA\Admin\Setup_Wizard::send_authentication_setup_email( $user->ID );
+						remove_filter( 'wp_doing_ajax', '__return_false', PHP_INT_MAX );
 					}
 					?>
 					<p><?php esc_html_e( 'Please enter the 2FA verification code sent to your email address to login:', 'userswp' ); ?></p>
@@ -1797,9 +1801,16 @@ class UsersWP_Forms {
 			wp_send_json_error( array( 'message' => $message ) );
 		}
 
-		// If this is an email login, or if the user failed validation previously, lets send the code to the user.
-		if ( 'email' === $provider && true !== \WP2FA\Authenticator\Login::pre_process_email_authentication( $user ) ) {
+		// Resend the email code when asked.
+		if ( 'email' === $provider ) {
+			// WP 2FA stops AJAX requests without its setup wizard nonce with a 400 error, so send the code as a normal request.
+			add_filter( 'wp_doing_ajax', '__return_false', PHP_INT_MAX );
 
+			try {
+				\WP2FA\Authenticator\Login::pre_process_email_authentication( $user );
+			} finally {
+				remove_filter( 'wp_doing_ajax', '__return_false', PHP_INT_MAX );
+			}
 		}
 
 		// Validate TOTP.
@@ -1897,7 +1908,7 @@ class UsersWP_Forms {
 		}
 
 		if ( isset( $_REQUEST['redirect_to'] ) && ! empty( $_REQUEST['redirect_to'] ) ) {
-			$redirect_to = esc_url_raw( $_REQUEST['redirect_to'] );
+			$redirect_to = esc_url_raw( wp_unslash( $_REQUEST['redirect_to'] ) );
 		} elseif ( isset( $data['redirect_to'] ) && ! empty( $data['redirect_to'] ) ) {
 			$redirect_to = esc_url_raw( $data['redirect_to'] );
 		} elseif ( isset( $redirect_page_id ) && (int) $redirect_page_id > 0 ) {
@@ -1909,7 +1920,7 @@ class UsersWP_Forms {
 			}
 			$redirect_to = get_permalink( $redirect_page_id );
 		} elseif ( isset( $redirect_page_id ) && (int) $redirect_page_id == - 1 && wp_get_referer() ) {
-			$redirect_to = esc_url( wp_get_referer() );
+			$redirect_to = esc_url_raw( wp_get_referer() );
 		} elseif ( isset( $redirect_page_id ) && (int) $redirect_page_id == - 2 && ! empty( $custom_url ) ) {
 			$redirect_to = $custom_url;
 		} else {
